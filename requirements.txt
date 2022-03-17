@@ -1,0 +1,6 @@
+tqdm
+pandas
+numpy
+nltk
+wordcloud
+imageio
