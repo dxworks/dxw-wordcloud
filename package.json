@@ -1,0 +1,50 @@
+{
+    "name": "@dxworks/dxw-wordcloud",
+    "version": "0.0.1",
+    "description": "Tool for generating word cloud images out of the activity and commit messages mined by DX.",
+    "keywords": [
+      "python",
+      "wordcloud",
+      "dx",
+      "static analysis"
+    ],
+    "homepage": "https://github.com/dxworks/dxw-wordcloud/",
+    "bugs": {
+      "url": "https://github.com/dxworks/dxw-wordcloud/issues"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/dxworks/dxw-wordcloud.git"
+    },
+    "license": "Apache-2.0",
+    "author": "Dan Danciu",
+    "main": "index.js",
+    "directories": {
+      "doc": "docs"
+    },
+    "files": [
+      "lib"
+    ],
+    "dependencies": {
+      "axios": "^0.24.0",
+      "cli-progress": "^3.9.1",
+      "commander": "^8.3.0",
+      "unzipper": "^0.10.11"
+    },
+    "devDependencies": {
+      "json": "^11.0.0",
+      "sort-package-json": "^1.52.0"
+    },
+    "publishConfig": {
+      "access": "public",
+      "registry": "https://npm.pkg.github.com"
+    },
+    "dxw": {
+      "commands": [
+        {
+          "file": "lib/index.js",
+          "command": "dxwcCommand"
+        }
+      ]
+    }
+  }

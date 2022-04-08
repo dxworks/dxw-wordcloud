@@ -1,40 +1,30 @@
-
 import argparse
-import numpy as np
-import pandas as pd
-
-import datetime
-from dateutil.relativedelta import relativedelta
 import re
 import itertools
 import os
 import glob
 import random
 import hashlib
-import shutil
+import multiprocessing
 
+import pandas as pd
 
 from tqdm import tqdm
 from tqdm.auto import tqdm 
-tqdm.pandas()
 
 import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize 
-nltk.download('stopwords')
-nltk.download('omw-1.4')
 
 from wordcloud import WordCloud
 
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import matplotlib.animation as animation
-
-import PIL
-from PIL import Image, ImageDraw
 
 import imageio
+
+tqdm.pandas()
+
+
 
 ACTIVITY_FILE = "+dx-results/+tuning/git/Detailed_Model-git.csv"
 MESSAGES_FILE = "+dx-results/+tuning/git/Commit_Messages-git.csv"
@@ -176,17 +166,17 @@ def morph(from_wc, to_wc, how_many):
     return layouts
 
 
-def get_wordclouds(scopes, frequency_fn, frames_between_keys=10, max_words=100):
+def get_wordclouds(scopes, frequency_fn, output_location, frames_between_keys=10, max_words=100):
     clouds = []
     frequency_df = frequency_fn(scopes[0])
-    frequency_df.to_csv(f"word_frequency_{scopes[0]}.csv")
+    frequency_df.to_csv(os.path.join(output_location, f"word_frequency_{scopes[0]}.csv"))
     clouds.append((make_word_cloud(frequency_df.to_dict(), max_words=max_words), scopes[0]))
 
     for scope in tqdm(scopes[1:], desc="Generating frames per scope"):
 
         from_wc = clouds[-1][0]
         frequency_df = frequency_fn(scope)
-        frequency_df.to_csv(f"word_frequency_{scope}.csv")
+        frequency_df.to_csv(os.path.join(output_location, f"word_frequency_{scope}.csv"))
         to_wc = make_word_cloud(frequency_df.to_dict(), max_words=max_words)
 
         for m in morph(from_wc, to_wc, frames_between_keys):
@@ -203,7 +193,7 @@ def get_wordclouds(scopes, frequency_fn, frames_between_keys=10, max_words=100):
 def save_wordclouds_frames(location, wordclouds):
     indx = 0
     prev_scope=wordclouds[0][1]
-    for wc, scope in tqdm(wordclouds, desc="Saving frames"):
+    for wc, scope in tqdm(wordclouds, desc=f"Saving frames to {location}"):
         if prev_scope != scope:
             indx = 0
             prev_scope = scope
@@ -218,7 +208,7 @@ def make_gif_from_frames(output, frames_location):
     frames = []
     duration = []
     prev_scope = None
-    for f in tqdm(sorted(glob.glob(f'{where}/*.png')), desc="Adding frames to output"):
+    for f in tqdm(sorted(glob.glob(f'{frames_location}/*.png')), desc="Adding frames to output"):
         scope = f.split("/")[-1].split(".")[0].split("-")[-2] 
         frames.append(imageio.imread(f))
         if prev_scope and prev_scope != scope:
@@ -234,7 +224,10 @@ def make_gif_from_frames(output, frames_location):
 
 
 def prepare_data(dx_project):
-    activity_df = pd.read_csv(os.path.join(dx_project, ACTIVITY_FILE), encoding='unicode_escape')
+    activity_df = pd.read_csv(os.path.join(dx_project, ACTIVITY_FILE), 
+                              encoding='unicode_escape', 
+                              on_bad_lines='warn')
+
     activity_df['date']  = pd.to_datetime(activity_df['date'])
     activity_df["churn"] = activity_df["addedLines"] + activity_df["deletedLines"]
 
@@ -249,7 +242,12 @@ def prepare_data(dx_project):
     activity_words_df = activity_words_df[["words", "churn", "date"]]
     activity_words_df["source"] = "files"
 
-    commit_messages_df = pd.read_csv(os.path.join(dx_project, MESSAGES_FILE), index_col=0, encoding='unicode_escape')[["date", "message"]]
+    commit_messages_df = pd.read_csv(os.path.join(dx_project, MESSAGES_FILE), 
+                                     index_col=0, 
+                                     encoding='unicode_escape',
+                                     on_bad_lines='warn'
+                                     )[["date", "message"]]
+
     commit_messages_df['date'] = pd.to_datetime(commit_messages_df.date)
 
     commit_activity_df = activity_df.groupby(["commit"])[["churn"]].sum().reset_index()
@@ -279,8 +277,11 @@ def main():
 
     words_df = prepare_data(dx_project=args.dx)
     
+    os.makedirs(args.output, exist_ok=True)
+
     clouds = get_wordclouds(scopes=["messsages|files", "messsages", "files"], 
                             frequency_fn=lambda scope: get_relevant_words_frequencies(scope, words_df), 
+                            output_location=args.output,
                             frames_between_keys=0, max_words=args.max_words)
     save_wordclouds_frames(location=args.output, wordclouds=clouds)
    
@@ -288,23 +289,25 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser(description='Extract the dependencies from the`requirements.yml` files.')
     parser.add_argument(
-        '--dx', type=str, required=True,
-        help='location of the DX project (dx has already been ran, and `+dx-results` folder is available)')
+        '--dx', type=str, required=False, default=os.getcwd(),
+        help='location of the DX project (dx has already been ran, and `+dx-results` folder is available), '
+             'defaults to current working directory')
     parser.add_argument(
         '--max-words', type=int, required=False, default=20,
         help='Number of words to be a added on a word cloud, sorted descending by the amount of activity (churn).')
     parser.add_argument(
-        '--output', type=str, required=False, default=os.getcwd(),
-        help='the folder where the output files will be written')
+        '--output', type=str, required=False, default=os.path.join(os.getcwd(), "+wordclouds"),
+        help='the folder where the output files will be written, defaults to `./+wordclouds`')
     args = parser.parse_args()
 
     if not (os.path.exists(os.path.join(args.dx, ACTIVITY_FILE)) and
             os.path.exists(os.path.join(args.dx, MESSAGES_FILE))):
-        print("Path provided as DX project does not contain the expected files {ACTIVITY_FILE} and {MESSAGES_FILE}.")
+        print(f"Path provided as DX project ({args.dx}) does not contain the expected files {ACTIVITY_FILE} and {MESSAGES_FILE}.")
         sys.exit(2)
 
     return args
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

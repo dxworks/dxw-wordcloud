@@ -1,0 +1,9 @@
+__pycache__
+build
+dist
+# *.spec we commit spec files, as they contain custom configs (i.e. stopwords for wordcloud module)
+
+.DS_Store
+*.code-workspace
+logs/
+node_modules/

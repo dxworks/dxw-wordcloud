@@ -4,3 +4,4 @@ numpy
 nltk
 wordcloud
 imageio
+pyinstaller
