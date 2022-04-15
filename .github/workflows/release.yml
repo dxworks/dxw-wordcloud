@@ -23,6 +23,7 @@ jobs:
         id: semver_parser
         run: |
           semver=${TAG#"refs/tags/v"}
+          semver=${semver#"refs/heads/v"}
           semver=${semver%"-voyager"}
           echo ::set-output name=semver::$semver
         env:
