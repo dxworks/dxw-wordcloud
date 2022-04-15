@@ -1,0 +1,131 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - 'release-test'
+
+jobs:
+  build-and-publish:
+    name: Build and Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Extract Semver
+        id: semver_parser
+        run: |
+          semver=${TAG#"refs/tags/v"}
+          semver=${semver%"-voyager"}
+          echo ::set-output name=semver::$semver
+        env:
+          TAG: ${{ github.ref }}
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+
+      - name: Install Requirements
+        run: pip install -r requirements.txt
+
+      - name: Release for OS
+        run: |
+          pyinstaller dx_wc.spec
+
+      - name: Create Archive
+        run: zip -r dx-wordcloud.zip dist/dx_wc
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: dx-wordcloud-${{ steps.semver_parser.outputs.semver }}-${{ matrix.os }}.zip
+          path: dx-wordcloud-${{ steps.semver_parser.outputs.semver }}-${{ matrix.os }}.zip
+
+#  release-and-upload:
+#    name: Release and Upload
+#    runs-on: ubuntu-latest
+#    needs: build-and-publish
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#
+#      - name: Extract Semver
+#        id: semver_parser
+#        run: |
+#          semver=${TAG#"refs/tags/v"}
+#          semver=${semver%"-voyager"}
+#          echo ::set-output name=semver::$semver
+#        env:
+#          TAG: ${{ github.ref }}
+#
+#      - name: Download all artifacts
+#        uses: actions/download-artifact@v2
+#
+#      - name: List all downloads
+#        run: |
+#          echo "Running in directory $PWD"
+#          ls -R -al
+#      - name: Prepare Release Notes
+#        run: touch ${{ github.workspace }}/releaseNotes/v${{ steps.semver_parser.outputs.semver }}.md
+#
+#      - name: Create Release
+#        id: create_release
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          name: Honeydew ${{ steps.semver_parser.outputs.semver }}
+#          body_path: ${{ github.workspace }}/releaseNotes/v${{ steps.semver_parser.outputs.semver }}.md
+#          body: ""
+#          prerelease: false
+#          draft: false
+#          fail_on_unmatched_files: true
+#          files: |
+#            ./honeydew-win.zip/honeydew-win.zip
+#            ./honeydew-linux.zip/honeydew-linux.zip
+#            ./honeydew-osx.zip/honeydew-osx.zip
+#  npm-publish:
+#    name: Publish Npm Package
+#    runs-on: ubuntu-latest
+#    permissions:
+#      contents: write
+#      packages: write
+#
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#
+#      - name: Setup Node
+#        uses: actions/setup-node@v2
+#        with:
+#          node-version: '16.x'
+#          cache: 'npm'
+#          registry-url: 'https://npm.pkg.github.com'
+#          scope: '@dxworks'
+#
+#      - name: Prepare Node Dependencies
+#        run: npm install
+#
+#      - name: Extract Semver
+#        id: semver_parser
+#        run: |
+#          semver=${TAG#"refs/tags/v"}
+#          semver=${semver%"-voyager"}
+#          echo ::set-output name=semver::$semver
+#        env:
+#          TAG: ${{ github.ref }}
+#
+#      - name: Setup Version
+#        run: node_modules/.bin/json -I -f package.json -e "this.version='$VERSION'"
+#        env:
+#          VERSION: ${{ steps.semver_parser.outputs.semver }}
+#
+#      - name: Publish NPM
+#        run: npm publish
+#        env:
+#          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
