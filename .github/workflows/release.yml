@@ -40,7 +40,7 @@ jobs:
 
       - name: Release for OS
         run: |
-          pyinstaller dx_wc.spec
+          pyinstaller --one-file dx_wc.spec
 
       - name: Create Archive
         run: zip -r dx-wordcloud.zip dist/dx_wc
