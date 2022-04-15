@@ -48,7 +48,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: dx-wordcloud-${{ steps.semver_parser.outputs.semver }}-${{ matrix.os }}.zip
+          name: dx-wordcloud-${{ matrix.os }}.zip
           path: ./dx-wordcloud.zip
 
 #  release-and-upload:
