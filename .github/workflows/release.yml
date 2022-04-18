@@ -8,47 +8,66 @@ on:
       - 'release-test'
 
 jobs:
-  build-and-publish:
-    name: Build and Release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        os: [macos-latest]
+#  build-mac:
+#    name: Build and Release
+#    runs-on: ${{ matrix.os }}
+#    strategy:
+#      fail-fast: true
+#      matrix:
+#        os: [macos-latest]
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#
+#      - name: Extract Semver
+#        id: semver_parser
+#        run: |
+#          semver=${TAG#"refs/tags/v"}
+#          semver=${semver#"refs/heads/v"}
+#          semver=${semver%"-voyager"}
+#          echo ::set-output name=semver::$semver
+#        env:
+#          TAG: ${{ github.ref }}
+#
+#      - uses: actions/setup-python@v3
+#        with:
+#          python-version: '3.9'
+#          cache: 'pip'
+#          cache-dependency-path: 'requirements.txt'
+#
+#      - name: Install Requirements
+#        run: pip install -r requirements.txt
+#
+#      - name: Release for OS
+#        run: |
+#          pyinstaller -F dx_wc.spec
+#
+#      - name: Create Archive
+#        run: zip -r dx-wordcloud.zip dist/dx_wc
+#
+#      - name: Upload Artifact
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: dx-wordcloud-${{ matrix.os }}.zip
+#          path: ./dx-wordcloud.zip
+
+  build-windows:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-      - name: Extract Semver
-        id: semver_parser
-        run: |
-          semver=${TAG#"refs/tags/v"}
-          semver=${semver#"refs/heads/v"}
-          semver=${semver%"-voyager"}
-          echo ::set-output name=semver::$semver
-        env:
-          TAG: ${{ github.ref }}
-
-      - uses: actions/setup-python@v3
+      - name: Package Application
+        uses: JackMcKew/pyinstaller-action-windows@main
         with:
-          python-version: '3.9'
-          cache: 'pip'
-          cache-dependency-path: 'requirements.txt'
-
-      - name: Install Requirements
-        run: pip install -r requirements.txt
-
-      - name: Release for OS
-        run: |
-          pyinstaller -F dx_wc.spec
+          path: .
+          spec: dx_wc.spec
 
       - name: Create Archive
-        run: zip -r dx-wordcloud.zip dist/dx_wc
+        run: zip -r dx-wordcloud.zip dist/windows
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v2
         with:
-          name: dx-wordcloud-${{ matrix.os }}.zip
+          name: dx-wordcloud-windows.zip
           path: ./dx-wordcloud.zip
 
 #  release-and-upload:
